@@ -4,11 +4,8 @@ metadata:
   name: rememberme-backend-config
   namespace: rememberme
 data:
-  # DB 접속 정보 (Secret으로 옮겨야 할 항목은 별도 관리)
   DB_HOST: "host.docker.internal"
   DB_PORT: "3306"
-  DB_NAME: "rememberme"
-  # CORS 설정
-  CORS_ALLOWED_ORIGIN: "http://localhost"
-  # 쿠키 설정
+  DB_NAME: "rememberv1"
+  CORS_ALLOWED_ORIGIN: "http://localhost:30080"
   COOKIE_DOMAIN: "localhost"
