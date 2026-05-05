@@ -75,7 +75,11 @@ pipeline {
             steps {
                 dir('devops-frontend') {
                     sh """
-                        docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} .
+                        docker build \
+                            --build-arg VITE_KAKAO_CLIENT_ID=a3c925bb3ea42d42e7214bbed14cf347 \
+                            --build-arg VITE_KAKAO_REDIRECT_URI=http://localhost:30180/kakao-auth \
+                            --build-arg VITE_API_BASE_URL=/api/v1 \
+                            -t ${FRONTEND_IMAGE}:${IMAGE_TAG} .
                         docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
                         echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
