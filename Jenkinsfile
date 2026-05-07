@@ -160,7 +160,7 @@ pipeline {
         stage('Trigger k8s-manifests') {
             steps {
                 script {
-                    build job: 'devops-k8s-manifests', 
+                    build job: 'university-k8s-manifests', 
                         parameters: [
                             string(name: 'IMAGE_TAG', value: "${IMAGE_TAG}"),
                             string(name: 'DID_BUILD_FRONTEND', value: "${env.SHOULD_BUILD_FRONTEND}"),
