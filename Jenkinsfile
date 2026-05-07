@@ -1,5 +1,28 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: jenkins-agent
+            spec:
+              containers:
+              - name: docker
+                image: docker:29.4.1-cli-alpine3.23
+                command:
+                - cat
+                tty: true
+                volumeMounts:
+                - mountPath: "/var/run/docker.sock"
+                  name: docker-socket
+              volumes:
+              - name: docker-socket
+                hostPath:
+                  path: "/var/run/docker.sock"
+            '''
+        }
+    }
 
     // ============================================
     // GitHub Webhook 자동 트리거 설정
@@ -9,9 +32,8 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_CREDENTIALS_ID = 'dockerhub-access'
         GITHUB_TOKEN = credentials('github-token')
-        SONARQUBE_TOKEN = credentials('sonarqube-token')
         DOCKER_REGISTRY = 'yjs0530'
         BACKEND_IMAGE = "${DOCKER_REGISTRY}/rememberme-backend"
         FRONTEND_IMAGE = "${DOCKER_REGISTRY}/rememberme-frontend"
@@ -59,45 +81,60 @@ pipeline {
         }
 
         // ============================================
-        // 4. Docker 이미지 빌드 & 푸시 (Backend)
+        // 4. Docker 로그인
+        // ============================================
+        stage('Docker Login') {
+            steps {
+                container('docker') {
+                    sh 'docker logout'
+
+                    withCredentials([usernamePassword(
+                        credentialsId: DOCKER_CREDENTIALS_ID,
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )]) {
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                    }
+                }
+            }
+        }
+
+        // ============================================
+        // 5. Docker 이미지 빌드 & 푸시 (Backend)
         // ============================================
         stage('Docker Build & Push - Backend') {
             steps {
-                dir('devops-backend') {
-                    sh """
-                        docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} .
-                        docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
-                        echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
-                        docker push ${BACKEND_IMAGE}:latest
-                    """
+                container('docker') {
+                    dir('devops-backend') {
+                        sh "docker build --no-cache -t ${BACKEND_IMAGE}:${IMAGE_TAG} ."
+                        sh "docker push ${BACKEND_IMAGE}:${IMAGE_TAG}"
+                    }
                 }
             }
         }
 
         // ============================================
-        // 5. Docker 이미지 빌드 & 푸시 (Frontend)
+        // 6. Docker 이미지 빌드 & 푸시 (Frontend)
         // ============================================
         stage('Docker Build & Push - Frontend') {
             steps {
-                dir('devops-frontend') {
-                    sh """
-                        docker build \
-                            --build-arg VITE_KAKAO_CLIENT_ID=a3c925bb3ea42d42e7214bbed14cf347 \
-                            --build-arg VITE_KAKAO_REDIRECT_URI=http://localhost:30180/kakao-auth \
-                            --build-arg VITE_API_BASE_URL=/api/v1 \
-                            -t ${FRONTEND_IMAGE}:${IMAGE_TAG} .
-                        docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
-                        echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                        docker push ${FRONTEND_IMAGE}:latest
-                    """
+                container('docker') {
+                    dir('devops-frontend') {
+                        sh """
+                            docker build --no-cache \
+                                --build-arg VITE_KAKAO_CLIENT_ID=a3c925bb3ea42d42e7214bbed14cf347 \
+                                --build-arg VITE_KAKAO_REDIRECT_URI=http://localhost:30180/kakao-auth \
+                                --build-arg VITE_API_BASE_URL=/api/v1 \
+                                -t ${FRONTEND_IMAGE}:${IMAGE_TAG} .
+                        """
+                        sh "docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}"
+                    }
                 }
             }
         }
 
         // ============================================
-        // 6. GitOps 매니페스트 업데이트 (ArgoCD 트리거)
+        // 7. GitOps 매니페스트 업데이트 (ArgoCD 트리거)
         // ============================================
         stage('Update GitOps Manifest') {
             steps {
