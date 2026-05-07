@@ -68,27 +68,6 @@ pipeline {
                 }
             }
         }
-
-        // ============================================
-        // 3. SonarQube 코드 분석
-        // ============================================
-        stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    dir('devops-backend') {
-                        withSonarQubeEnv('SonarQube') {
-                            sh '''
-                                mvn sonar:sonar \
-                                    -Dsonar.projectKey=rememberme-backend \
-                                    -Dsonar.projectName="RememberMe Backend" \
-                                    -Dsonar.java.binaries=target/classes
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
         // ============================================
         // 4. Docker 로그인
         // ============================================
