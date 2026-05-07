@@ -89,5 +89,5 @@ mybatis-generator.log
 *.njsproj
 *.sln
 *.sw?
-secret.yaml
-k8s/rememberme-backend/secret.yaml
+**/secret.yaml
+**/k8s/rememberme-backend/secret.yaml
