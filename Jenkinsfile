@@ -57,9 +57,33 @@ pipeline {
         }
 
         // ============================================
+        // 1.5 변경 사항 감지 (Detect Changes)
+        // ============================================
+        stage('Detect Changes') {
+            steps {
+                script {
+                    // 현재 커밋과 이전 커밋(HEAD~1) 간의 변경 파일을 가져온다.
+                    def changedFiles = sh(script: 'git diff --name-only HEAD~1', returnStdout: true).trim().split("\n")
+
+                    echo "Changed files:\n${changedFiles.join('\n')}"
+                    
+                    // 프론트엔드와 백엔드 디렉토리 변경 감지
+                    env.SHOULD_BUILD_FRONTEND = changedFiles.any { it.startsWith("devops-frontend/") } ? "true" : "false"
+                    env.SHOULD_BUILD_BACKEND = changedFiles.any { it.startsWith("devops-backend/") } ? "true" : "false"
+
+                    echo "SHOULD_BUILD_FRONTEND : ${env.SHOULD_BUILD_FRONTEND}"
+                    echo "SHOULD_BUILD_BACKEND : ${env.SHOULD_BUILD_BACKEND}"
+                }
+            }
+        }
+
+        // ============================================
         // 2. 백엔드 빌드 (Maven)
         // ============================================
         stage('Backend Build') {
+            when {
+                expression { return env.SHOULD_BUILD_BACKEND == "true" }
+            }
             steps {
                 container('maven') {
                     dir('devops-backend') {
@@ -72,6 +96,9 @@ pipeline {
         // 4. Docker 로그인
         // ============================================
         stage('Docker Login') {
+            when {
+                expression { return env.SHOULD_BUILD_FRONTEND == "true" || env.SHOULD_BUILD_BACKEND == "true" }
+            }
             steps {
                 container('docker') {
                     sh 'docker logout'
@@ -91,6 +118,9 @@ pipeline {
         // 5. Docker 이미지 빌드 & 푸시 (Backend)
         // ============================================
         stage('Docker Build & Push - Backend') {
+            when {
+                expression { return env.SHOULD_BUILD_BACKEND == "true" }
+            }
             steps {
                 container('docker') {
                     dir('devops-backend') {
@@ -105,6 +135,9 @@ pipeline {
         // 6. Docker 이미지 빌드 & 푸시 (Frontend)
         // ============================================
         stage('Docker Build & Push - Frontend') {
+            when {
+                expression { return env.SHOULD_BUILD_FRONTEND == "true" }
+            }
             steps {
                 container('docker') {
                     dir('devops-frontend') {
@@ -122,26 +155,19 @@ pipeline {
         }
 
         // ============================================
-        // 7. GitOps 매니페스트 업데이트 (ArgoCD 트리거)
+        // 7. GitOps 매니페스트 업데이트 (Downstream Job 트리거)
         // ============================================
-        stage('Update GitOps Manifest') {
+        stage('Trigger k8s-manifests') {
             steps {
-                sh """
-                    git clone https://\$GITHUB_TOKEN_USR:\$GITHUB_TOKEN_PSW@${GITOPS_REPO} gitops-repo
-                    cd gitops-repo
-
-                    # Backend 이미지 태그 업데이트
-                    sed -i "s|image: ${BACKEND_IMAGE}:.*|image: ${BACKEND_IMAGE}:${IMAGE_TAG}|g" rememberme-backend/deployment.yaml
-
-                    # Frontend 이미지 태그 업데이트
-                    sed -i "s|image: ${FRONTEND_IMAGE}:.*|image: ${FRONTEND_IMAGE}:${IMAGE_TAG}|g" rememberme-frontend/deployment.yaml
-
-                    git config user.email "jenkins@rememberme.com"
-                    git config user.name "Jenkins CI"
-                    git add .
-                    git commit -m "Update image tag to ${IMAGE_TAG}" || echo "No changes to commit"
-                    git push origin main
-                """
+                script {
+                    build job: 'devops-k8s-manifests', 
+                        parameters: [
+                            string(name: 'IMAGE_TAG', value: "${IMAGE_TAG}"),
+                            string(name: 'DID_BUILD_FRONTEND', value: "${env.SHOULD_BUILD_FRONTEND}"),
+                            string(name: 'DID_BUILD_BACKEND', value: "${env.SHOULD_BUILD_BACKEND}")
+                        ],
+                        wait: true
+                }
             }
         }
     }
