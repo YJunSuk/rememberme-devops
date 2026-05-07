@@ -120,15 +120,4 @@ pipeline {
             }
         }
     }
-
-    post {
-        always {
-        }
-        success {
-            echo "✅ Pipeline completed successfully! Image tag: ${IMAGE_TAG}"
-        }
-        failure {
-            echo "❌ Pipeline failed. Check the logs for details."
-        }
-    }
 }
