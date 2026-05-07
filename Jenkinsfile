@@ -38,7 +38,6 @@ pipeline {
 
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-access'
-        GITHUB_TOKEN = credentials('github-token')
         DOCKER_REGISTRY = 'yjs0530'
         BACKEND_IMAGE = "${DOCKER_REGISTRY}/rememberme-backend"
         FRONTEND_IMAGE = "${DOCKER_REGISTRY}/rememberme-frontend"
