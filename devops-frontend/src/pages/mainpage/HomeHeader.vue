@@ -5,7 +5,7 @@
         </div>
         <div class="py-1">
             <h2 class="text-2xl font-bold text-[var(--color-text-main)]">
-                안녕하세요, <span class="text-brand-green">{{ username }}</span> 님!
+                안녕하세요!, <span class="text-brand-green">{{ username }}</span> 님!
             </h2>
             <p class="text-[var(--color-text-sub)] font-SemiBold">오늘도 건강하게 산책해볼까요? ☀️</p>
         </div>
