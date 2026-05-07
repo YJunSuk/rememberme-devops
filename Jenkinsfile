@@ -16,6 +16,11 @@ pipeline {
                 volumeMounts:
                 - mountPath: "/var/run/docker.sock"
                   name: docker-socket
+              - name: maven
+                image: maven:3.9.6-eclipse-temurin-21
+                command:
+                - cat
+                tty: true
               volumes:
               - name: docker-socket
                 hostPath:
@@ -56,8 +61,10 @@ pipeline {
         // ============================================
         stage('Backend Build') {
             steps {
-                dir('devops-backend') {
-                    sh 'mvn clean package -DskipTests -B'
+                container('maven') {
+                    dir('devops-backend') {
+                        sh 'mvn clean package -DskipTests -B'
+                    }
                 }
             }
         }
@@ -67,14 +74,16 @@ pipeline {
         // ============================================
         stage('SonarQube Analysis') {
             steps {
-                dir('devops-backend') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                            mvn sonar:sonar \
-                                -Dsonar.projectKey=rememberme-backend \
-                                -Dsonar.projectName="RememberMe Backend" \
-                                -Dsonar.java.binaries=target/classes
-                        '''
+                container('maven') {
+                    dir('devops-backend') {
+                        withSonarQubeEnv('SonarQube') {
+                            sh '''
+                                mvn sonar:sonar \
+                                    -Dsonar.projectKey=rememberme-backend \
+                                    -Dsonar.projectName="RememberMe Backend" \
+                                    -Dsonar.java.binaries=target/classes
+                            '''
+                        }
                     }
                 }
             }
