@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    // ============================================
+    // GitHub Webhook 자동 트리거 설정
+    // ============================================
+    triggers {
+        githubPush()  // GitHub Push 이벤트 수신 시 자동 빌드
+    }
+
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         GITHUB_TOKEN = credentials('github-token')
