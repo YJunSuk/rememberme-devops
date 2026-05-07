@@ -29,11 +29,8 @@ pipeline {
         }
     }
 
-    // ============================================
-    // GitHub Webhook 자동 트리거 설정
-    // ============================================
     triggers {
-        githubPush()  // GitHub Push 이벤트 수신 시 자동 빌드
+        githubPush() 
     }
 
     environment {
@@ -46,39 +43,25 @@ pipeline {
     }
 
     stages {
-        // ============================================
-        // 1. 소스 코드 체크아웃
-        // ============================================
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // ============================================
-        // 1.5 변경 사항 감지 (Detect Changes)
-        // ============================================
         stage('Detect Changes') {
             steps {
                 script {
-                    // 현재 커밋과 이전 커밋(HEAD~1) 간의 변경 파일을 가져온다.
                     def changedFiles = sh(script: 'git diff --name-only HEAD~1', returnStdout: true).trim().split("\n")
 
                     echo "Changed files:\n${changedFiles.join('\n')}"
-                    
-                    // 프론트엔드와 백엔드 디렉토리 변경 감지
                     env.SHOULD_BUILD_FRONTEND = changedFiles.any { it.startsWith("devops-frontend/") } ? "true" : "false"
                     env.SHOULD_BUILD_BACKEND = changedFiles.any { it.startsWith("devops-backend/") } ? "true" : "false"
-
                     echo "SHOULD_BUILD_FRONTEND : ${env.SHOULD_BUILD_FRONTEND}"
                     echo "SHOULD_BUILD_BACKEND : ${env.SHOULD_BUILD_BACKEND}"
                 }
             }
         }
-
-        // ============================================
-        // 2. 백엔드 빌드 (Maven)
-        // ============================================
         stage('Backend Build') {
             when {
                 expression { return env.SHOULD_BUILD_BACKEND == "true" }
@@ -91,9 +74,6 @@ pipeline {
                 }
             }
         }
-        // ============================================
-        // 4. Docker 로그인
-        // ============================================
         stage('Docker Login') {
             when {
                 expression { return env.SHOULD_BUILD_FRONTEND == "true" || env.SHOULD_BUILD_BACKEND == "true" }
@@ -112,10 +92,6 @@ pipeline {
                 }
             }
         }
-
-        // ============================================
-        // 5. Docker 이미지 빌드 & 푸시 (Backend)
-        // ============================================
         stage('Docker Build & Push - Backend') {
             when {
                 expression { return env.SHOULD_BUILD_BACKEND == "true" }
@@ -129,10 +105,6 @@ pipeline {
                 }
             }
         }
-
-        // ============================================
-        // 6. Docker 이미지 빌드 & 푸시 (Frontend)
-        // ============================================
         stage('Docker Build & Push - Frontend') {
             when {
                 expression { return env.SHOULD_BUILD_FRONTEND == "true" }
@@ -152,10 +124,6 @@ pipeline {
                 }
             }
         }
-
-        // ============================================
-        // 7. GitOps 매니페스트 업데이트 (Downstream Job 트리거)
-        // ============================================
         stage('Trigger k8s-manifests') {
             steps {
                 script {
