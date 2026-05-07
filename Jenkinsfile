@@ -123,8 +123,6 @@ pipeline {
 
     post {
         always {
-            // 워크스페이스 정리
-            cleanWs()
         }
         success {
             echo "✅ Pipeline completed successfully! Image tag: ${IMAGE_TAG}"
