@@ -90,4 +90,4 @@ mybatis-generator.log
 *.sln
 *.sw?
 **/secret.yaml
-**/k8s/rememberme-backend/secret.yaml
+k8s/rememberme-backend/secret.yaml
