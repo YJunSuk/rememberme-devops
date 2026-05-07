@@ -89,3 +89,4 @@ mybatis-generator.log
 *.njsproj
 *.sln
 *.sw?
+secret.yaml
