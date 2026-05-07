@@ -19,7 +19,7 @@
       <div class="space-y-8 w-full">
         <div class="space-y-2">
           <p class="text-xl font-bold text-[green] leading-tight">
-            반가워요!
+            반갑습니다.
           </p>
           <p class="text-gray-700 font-medium">
             건강한 두뇌를 위해<br />
